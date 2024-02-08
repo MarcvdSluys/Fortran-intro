@@ -1,0 +1,45 @@
+#+title: A short introduction to modern Fortran
+
+I put together a short Fortran code that show the basics.  The code should compile and run, and from the code,
+its comments and the output, you may be able to divine what is going on.
+
+* Installing a compiler
+I recommend using [[https://gcc.gnu.org/wiki/GFortran][gfortran]], which is open, free and available on all respectable operating systems using your
+package manager (search for ~gfortran~, ~gcc-fortran~ or ~gcc~).  For M$ Windoze, the folks at [[https://cygwin.com/][Cygwin]] can help you
+to make your OS somewhat more respectable.  Follow their instructions to install Cygwin, then install a recent
+version of the package called ~gcc-fortran~ (as of 2024, v13 is the most recent version).
+
+* Compiling and running the program
+In principle you can compile and run the example code with
+#+begin_src bash
+  gfortran -o fortran-example fortran-example.f90  # Compile
+  ./fortran-example                                # Run
+#+end_src
+The first step compiles ~fortran-example.f90~ and creates a /binary executable/ called ~fortran-example~.  The
+second step executes that program.
+
+However, the Fortran compiler is very good at optimising your code (to improve the speed) /and/ at helping you
+to write good code, to avoid surprises.  To get all the help you can get, I recommend you compile your code
+using the following options and fix any warnings you may find:
+#+begin_src bash
+  gfortran -std=f2018 -fall-intrinsics -pedantic -fwhole-file -pipe -funroll-all-loops -O2 -fPIC -g -Wall
+  -Wextra -o fortran-example fortran-example.f90
+#+end_src
+This is particularly important because many Fortran compilers are quite forgiving --- they may do what you
+want even though you didn't get the code quite right --- until you run on a different system and suddenly
+nothing works anymore.  Hence use these flags from the beginning, so that you know where you introduced the
+issue.
+
+From time to time you should run your code with *run-time checks* enabled.  This will slow things down
+dramatically, but can catch many issues in your code:
+#+begin_src bash
+  gfortran -O0 -fcheck=all -fbacktrace -g -ffpe-trap=invalid,zero,overflow,underflow,denormal
+  -finit-integer=-99999999 -finit-real=snan -Wall -Wextra -Wcharacter-truncation -Wunderflow -o fortran-example
+  fortran-example.f90
+#+end_src
+
+Note that optimisation options like ~-O3~ and ~-Ofast~ may produce faster code, but also incorrect code.  Use with
+care, or if you don't care about round-off and reproducibility.
+
+* Notes
+I may add some of my notes at some point.
