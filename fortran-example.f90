@@ -79,7 +79,7 @@ end subroutine print_stuff
 
   
 
-  
+
 !> \brief Example function
 function multiply(x,y)
   implicit none
@@ -119,8 +119,18 @@ subroutine if_statements_and_do_loops()
         if(iter == 9) exit      ! Exit the loop completely (use stop to exit the program)
         print*,iter,': a lot!'
      else
+        continue  ! Does nothing (well, it continues to the next line, as it says), like Python pass
+        !           (and unlike Python's continue, which does NOT continue...!)
         print*,iter
      end if
+  end do
+  
+  print*
+  
+  iter = 1
+  do while(iter<3)
+     print*,iter
+     iter = iter + 1  ! No ++ or +=... :-(
   end do
   
 end subroutine if_statements_and_do_loops

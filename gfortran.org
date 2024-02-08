@@ -1,0 +1,52 @@
+# Created 2024-02-08 Thu 09:46
+#+title: Fortran: gfortran
+#+author: Marc van der Sluys
+#+export_file_name: /home/sluys/diverse/software/fortran-intro/gfortran
+* Compiler options
+** My current CMake standard
+:  -std=f2008 -fall-intrinsics -pedantic -fwhole-file -pipe -funroll-all-loops -O2 -fPIC -g  -Wall -Wextra
+
+** General options
+- ~-ffree-form~ :: F90 for iso F77 - determined from extension if omitted
+- ~-ffree-line-length-none~ :: unlimited line width
+
+- ~-Wall~ :: all standard warnings
+- ~-Wextra~ :: extra warnings
+- ~-Werror~ :: treat warning as error and stop compilation
+- ~-fmax-errors=10~ :: stop compilation after n errors
+- ~-std=f2008~ :: adhere to Fortran standard: choice of: legacy, f95, f2003, f2008 - use -pedantic
+- ~-pedantic~ :: use icw -std=f95,f2003,f2008 - be even extra pedantic ???
+
+
+- ~-I<moddir>~ :: Add include directory (look for existing module files)
+- ~-J<moddir>~ :: Put compiled modules in this directory (+ include this directory)
+
+- ~-ffpe-trap=zero,invalid,overflow,underflow,denormal,precision~:
+  - zero :: division by zero
+  - invalid :: invalid floating point operation, such as SQRT(-1.0)
+  - overflow :: overflow in a floating point operation
+  - underflow :: underflow in a floating point operation
+  - precision :: loss of precision during operation, not recommended
+  - denormal :: operation produced a denormal value, not supported (in gfortran-4.5)
+
+** Optimisation options
+- ~-march=native~ :: Optimise for local CPU
+- ~-march=core2~ :: Optimise for think <= 4.5
+- ~-march=corei7~ :: Optimise for think >= 4.6
+
+- ~-fwhole-program~ :: Optimise assuming the whole program is in one source file
+- ~-funroll-loops~ :: Typically improves performance of DO loops and is probably generally appropriate for
+     Fortran
+
+- ~-O3 -ffast-math~ :: Faster math at the cost of precision loss
+- ~-Ofast~ :: Same and more, dropping standard compliance
+  - (???This causes gfortran to read files \sim2.5x faster, comparable to ifort???)
+
+- ~-mieee-fp~ :: IEEE-compliant math?
+
+*** Autoparallelisation
+- compile gcc with USE=graphite
+- use/check: (http://stackoverflow.com/questions/38883411):
+  - -floop-parallelize-all
+  - -ftree-parallelize-loops=4
+  - -floop-nest-optimize
