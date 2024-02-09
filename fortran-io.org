@@ -1,0 +1,176 @@
+# Created 2024-02-09 Fri 19:26
+#+title: Fortran I/O
+#+author: Marc van der Sluys
+#+export_file_name: ~/diverse/doc/MyDocumentation/fortran-intro/fortan-io
+
+* Code examples using libSUFR
+/The code examples in this section use the libSUFR package (libsurf.sf.net), and are not standard Fortran./
+
+** Opening and reading a file with error signaling
+#+begin_src f90
+  use SUFR_kinds, only: double
+  use SUFR_constants, only: set_SUFR_constants
+  use SUFR_system, only: find_free_io_unit, file_open_error_quit, file_read_error_quit, file_skip_header
+
+  implicit none
+  integer, parameter :: nCols=8, nLines=100
+  integer :: status,ip,ln
+  real(double) :: dat(nCols, nLines)
+  character :: inFile*(99), ioMsg*(99)
+
+  call set_SUFR_constants()
+
+  inFile = 'file.dat'
+  call find_free_io_unit(ip)
+  open(unit=ip,form='formatted', status='old', action='read', position='rewind', file=trim(inFile), iostat=status)
+  if(status.ne.0) call file_open_error_quit(trim(inFile), 1, 1)  ! 1: input file, 1: status: not ok
+
+  ! Read file:
+  call file_skip_header(ip,3)  ! Skip header lines
+  do ln=1,nLines
+     read(ip,'(8F8.2)',iostat=status, iomsg=ioMsg) dat(ln,:)
+     if(status.lt.0) exit
+     if(status.gt.0) call file_read_error_quit(trim(inFile), ln, 0, iomsg=trim(ioMsg))
+  end do  ! ln
+  close(ip)
+#+end_src
+
+** Opening and writing a file with error signaling
+#+begin_src f90
+  use SUFR_kinds, only: double
+  use SUFR_constants, only: set_SUFR_constants
+  use SUFR_system, only: find_free_io_unit, file_open_error_quit, file_write_error_quit
+
+  call set_SUFR_constants()
+
+  ! Open output file:
+  out_file = 'comet_dynamics.csv'
+  call find_free_io_unit(op)
+  open(unit=op,form='formatted', status='replace', action='write', position='rewind', file=trim(out_file), iostat=status)
+  if(status.ne.0) call file_open_error_quit(trim(out_file), 0, 1)  ! 0: output file, 1: status: not ok
+  write(op, '(3(A9,","),3x,3(A9,","), 3x, A9,",",A9)', iostat=status, iomsg=io_msg) 'pos_x','pos_y','pos_z', 'vel_x','vel_y','vel_z', 'rad','vel'
+
+  do iter=1,102
+     write(op, '(3(F9.5,","),3x,3(F9.4,","), 3x, F9.5,",",F9.4)', iostat=status, iomsg=io_msg) pos_cur, vel_cur, rad,vel
+     if(status.gt.0) call file_write_error_quit(trim(out_file), iter, 0)  ! , iomsg=trim(io_msg))
+  end do  ! iter
+
+  ! Close output file:
+  close(op)
+#+end_src
+
+* Types of access
+- sequential vs. direct:
+  - sequential :: beginning to end (default)
+  - direct :: jump directly to the desired record.  All records must have the same length
+- formatted vs. unformatted:
+  - formatted :: ascii
+  - unformatted :: binary
+- list-directed vs. "explicitly formatted"
+  - list directed formatting, "default formatting" :: do not specify format descriptors: "free format" - my
+       "unformatted"
+  - "formatted", "explicit formatting" :: using format descriptors
+
+* Statements
+~open()~, ~close()~, ~read()~, ~write()~,  ~rewind()~, ~backspace()~, ~endfile()~,  ~inquire()~
+
+* Open
+#+begin_src f90
+  unit = intvar
+  file = 'file.dat'
+  action = 'read','write','readwrite'
+  status = 'old','new','replace','scratch','unknown'
+  position = 'append','rewind','asis'
+  form = 'formatted','unformatted'
+  iostat = intvar    ! intvar=0 if ok,  <0: EoF,  >0: read/format error
+#+end_src
+
+* Read/write
+- ~unit~          :: The parameter unit is an integer that indicates the unit/port to read from
+- ~advance='no'~  :: Do not advance to the next line after reading / no linebreak / no return
+- ~iostat=intvar~ :: intvar: 0: ok,  <0: end of file/end of record, >0: read error
+
+** iostat
+https://gcc.1065356.n5.nabble.com/iostat-td729115.html:
+
+- Execution of an input/output statement containing the IOSTAT= specifier causes the variable specified in
+  the IOSTAT= specifier to become defined:
+  1. With a zero value if neither an error condition, an end-of-file condition, nor an end-of-record condition
+     occurs,
+  2. With a processor-dependent positive integer value if an error condition occurs,
+  3. With a processor-dependent negative integer value if an end-of-file condition occurs and no error
+     condition occurs, or
+  4. With a processor-dependent negative integer value different from the end-of-file value if an
+     end-of-record condition occurs and no error condition or end-of-file condition
+- Hence:
+  - iostat = 0 :: no error no error, no EoF, no EoR
+  - iostat > 0 :: error
+  - iostat < 0 :: no error, but EoF or EoR
+- See ~is_iostat_eor()~, ~is_iostat_end()~ to distinguish EoR and EoF in Fortran \ge 2003
+
+** I/O units
+The read/write unit or port is assigned with the 'unit' option in open().  Standard values 
+(which don't need to be opened or closed) are:
+- 0 :: standard error output (stderr)
+- 5 :: standard input (stdin)
+- 6 :: standard output (stdout)
+- * :: often defaults to 5/6 when reading/writing, but this may be compiler-dependent!
+
+
+* Format descriptors
+- ~I~ :: Integer:                          ~rIw~ or ~rIw.m~
+- ~F~ :: Real:                             ~rFw.d~
+- ~E~ :: Real (exponential):               ~rEw.dEe~    (w \ge d+e+5)
+- ~ES~ :: Real (exponential, scientific):   ~rESw.dEe~   (w \ge d+e+5)
+- ~L~ :: Logical:                          ~rLw
++~ ~A~ ::  Character, left aligned:          ~rA~ or ~rAw~
+- ~X~ :: Horizontal space:                 ~nX~
+- ~T~ :: Horizontal tab:                   ~Tc,~ ~TLc~, ~TRc~
+- ~S~ :: Force plus for positive output:   ~SP,~ ~SS~, ~S~  Force plus, force no plus, restore default
+- ~/~ :: Line break:                       ~/
++~ ~$~ ::  No line break                     ~$~          (output in next write statement will start on same line)
+- ~()~ :: Repeat group:                     ~r(...)~
+
+** Symbols used
+- c :: Column number to jump to (T), number of colums to jump left (TL) or right (TR)
+- d :: Number of digits to the right of the decimal point (for real data)
+- e :: Number of decimals in the exponent (-1.0 as ES10.1E4 gives -1.0E+0000)
+- m :: Minimum number of digits to be displayed
+  - with I: causes leading zeroes where appropriate
+- n :: Number of spaces to skip
+- r :: Repeat count - the number of times to use a (group of) descriptor(s)
+- w :: Field width - the number of characters to use
+  - set to 0 to automatically determine w (seems to be true for I, F, others? - >=F95)
+
+- Tab to a specific column: write(*,'(T32,A)')'bla'   (This would start the text in column *31*, since the first column in the buffer is the "control character"(?))
+- Line break in formatted output:  / (with or without comma):  write(*,(/A,/,A/')'bla1','bla2'
+- See also: http://www.docs.hp.com/en/B3908-90002/ch09s03.html  BUT be aware of HP extensions!
+
+* Strings
+- can start with " or ' and must end with the same
+- print ' as " ' " or ' '' ';  print " as ' " ' or " "" "
+
+* Positioning
+#+begin_src f90
+  rewind(unit)     Rewinds the input/output file connected to unit to the beginning of the file
+  backspace(unit)  Rewinds the input/output connected to unit by one line
+#+end_src
+
+
+* Inquire
+#+begin_src f90
+  inquire(file=trim(filename), exist=ex) !Check whether the file exists; ex is logical
+#+end_src
+
+
+* Namelists
+#+begin_src f90
+  implicit none
+  integer :: ip
+  real :: x,y
+  namelist /mylist/ x,y,...  ! MUST come BEFORE any statements!
+
+  ...
+
+  read(ip, nml=mylist, iostat=status)
+#+end_src

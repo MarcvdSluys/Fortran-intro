@@ -1,0 +1,171 @@
+# Created 2024-02-09 Fri 19:49
+#+title: Fortran (90+) language
+#+author: Marc van der Sluys
+#+export_file_name: ~/diverse/doc/MyDocumentation/fortran-intro/fortan-language
+
+* See also
+- jotter fortran_2003
+- Intrinsic functions in Fortran 90 : http://www.nsc.liu.se/~boein/f77to90/a5.html
+- https://en.wikipedia.org/wiki/Fortran_95_language_features
+
+
+* Dynamic array allocation
+- In Fortran 90, arrays can be allocated dynamically:
+  #+begin_src f90
+    real, allocatable :: a(:,:)
+    allocate(a(100,26))
+    deallocate(a)
+    if(allocated(a)) deallocate(a)  
+  #+end_src
+
+* Reading command line parameters
+#+begin_src f90
+  narg = command_argument_count()
+  call get_command_argument(1,str)
+  read(str,*) var
+#+end_src
+
+
+* NULLs
+The parameters ~INULL~, ~RNULL~ and ~CNULL~ are used as the representation of ~NULL~ for integers, reals and character
+strings respectively.
+
+
+* Strings
+- ~char(i)~ :: convert integer to char
+- ~ichar(ch)~ :: convert char to integer
+  - ~ichar('A')~ = 65;  ~ichar('a')~ = 97.  Difference 32; hence, A \rightarrow a: +32, a \rightarrow A: -32
+- ~index(string,substring)~ :: find the location of a substring within string, 0 if not present
+
+
+* Character arrays (with entries of arbitrary length)
+#+begin_src f90
+  character :: example(3)*8
+  example(1:3) = [character(len=8) :: 'bla','trala','sometext']
+#+end_src
+if gfortran, the length (8 here) cannot be a variable, only a parameter
+
+
+* Select-case construct for integer ~i~
+#+begin_src f90
+  select case(i)
+  case(1)
+     print*,'Do this'
+  case(2)
+     print*,'Do that'
+  case default
+     print*,'Do default thing'
+  end select
+#+end_src
+
+
+* Where
+~where~ construct for arrays ~a,b,c~:
+#+begin_src f90
+  where(a.ne.0) c = b/a
+
+  where(a.lt.0)
+    c = -b/a
+  elsewhere(a.gt.0)
+    c = b/a
+  elsewhere
+    c = 0
+  end where
+#+end_src
+
+* Inquire
+#+begin_src f90
+  inquire(file=trim(filename), exist=ex)  ! Check whether the file exists; ex is logical
+#+end_src
+
+* Namelists
+#+begin_src f90
+  namelist /mylist/ x,y,...
+  read(ip, nml=mylist, iostat=status)
+#+end_src
+
+
+* Stop
+#+begin_src f90
+  stop     ! stop code execution and return status 0
+  stop n   ! stop code execution, print "STOP n" and return status n  (n >= 0)
+#+end_src
+
+
+* Optional dummy arguments for procedure
+#+begin_src f90
+  integer, intent(in), optional :: i
+  if(present(i)) j = i
+#+end_src
+- ~present()~ must be used for input and output arguments!
+- procedure must have an explicit interface (interface statement or procedure in module)
+
+
+* Masks
+#+begin_src f90
+  print*, minval(arr, mask=arr.gt.0.)  ! Print the minval of arr, only considering elements > 0
+  mxTime = pack(time(1:nDat), limmag(1:nDat) .ge. maxval(limmag(1:nDat)))  ! Returns all times for which limmag >= max(limmag)  (since .eq. isn't allowed in reals)
+#+end_src
+- See also maxloc, minloc
+
+
+* Forall
+#+begin_src f90
+  forall (triplet-spec [, triplet-spec]...[, mask-expr]) statement
+  [name:] forall (triplet-spec [, triplet-spec]...[, mask-expr])
+     statement
+     [statement]...
+  end forall [name]
+#+end_src
+
+- ~triplet-spec~ :: e.g. ~i=1:n~  or  ~j=2:2*n:2~
+- ~maskexpr~ :: e.g. ~a(i,j).ne.0.0~
+
+
+* Array looping
+Efficient memory use for arrays (this was specified in the F77 standard, not in the F90 standard, is likely to
+be retained, but could be different for different compilers):
+#+begin_src f90
+  do j = 1, 10
+    do i = 1, 10
+      A(i,j) = i * j
+    end do
+  end do
+#+end_src
+
+* Rounding
+- ~int()~ :: round towards 0
+- ~nint()~ :: round towards nearest integer
+- ~floor()~ :: round towards -infinity
+- ~ceiling()~ :: round owards +infinity
+
+
+
+* Derived data types
+Derived data type = derived type = "struct"
+- a derived data type in Fortran is like a struct in C
+- because the ddt must be the same in every procedure, you'll probably want to declare the TYPE in a module
+  and USE it (the TYPE, not the variable)
+
+** Define: ~type~
+#+begin_src f90
+  type :: type_name
+    integer :: num
+    real :: var
+  end type
+#+end_src
+
+** Declare: ~type()~
+#+begin_src f90
+  type (type_name) :: myVar
+  type (type_name), dimension(100) :: myArr  ! Array of type type_name
+#+end_src
+
+** Specify a member: ~%~
+- like a dot/period in C/Python
+#+begin_src f90
+  myVar%num = 3
+  myVar%var = 2.0
+  myVar = type_name(3, 2.0)  ! Order of definition(?)
+  myArr(99)%num = 3
+#+end_src

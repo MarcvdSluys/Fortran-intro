@@ -1,0 +1,150 @@
+# Created 2024-02-09 Fri 19:58
+#+title: Fortran tips and hints
+#+author: Marc van der Sluys
+#+export_file_name: ~/diverse/doc/MyDocumentation/fortran-intro/fortan-tips-hints
+
+* See also
+- ~fortran_language~    :: Fortran 90-95 language
+- ~fortran_2003~        :: Fortran 2003-08 extensions
+- ~fortran_io~          :: Fortran I/O
+- ~fortran_gtk~         :: Gtk-fortran - GUI
+- ~fortran_chars~       :: Table of control and character codes
+- ~fortran_character~   :: Fortran character functions
+- ~fortran_modules~     :: Fortran modules
+- ~fortran_parallel~    :: Fortran and OpenMP
+- ~fortran_precision~   :: Fortran precision functions and data types for different compilers
+
+** For specific compilers
+- ~fortran_gfortran~,  ~fortran_ifort~,  ~fortran_g95~,  ~fortran_nagfor~,
+- ~fortran_lf95~,  ~fortran_pgf~
+- g77/g95 (for MacOSX) see jotter g77
+
+
+* Debugging/optimisation
+See also:  jotter valgrind
+
+#+begin_src bash
+  ldd program    # Show which dynamic libraries are needed to run this program
+  nm program     # List symbols from object files
+#+end_src
+
+* Output in webapplet
+#+begin_src f90
+  write(6,'(A23,//)') 'Content-type: text/html'
+#+end_src
+
+* Update text in teminal
+To print a new text over your old text, go up one line by:
+
+#+begin_src f90
+  implicit none
+  integer :: i
+  character :: upline*3
+  upline = char(27)//'[A'
+
+  do i=1,100000
+    write(6,'(2X,F5.1,A2,\)')real(i)/1000.,' %'
+    write(6,*)upline
+  end do
+  print*,''
+#+end_src
+
+
+** ANSI escape sequences
+#+begin_src f90
+  char(27)//'[nA'       ! Move cursor n lines up
+  char(27)//'[nB'       ! Move cursor n lines down
+  char(27)//'[nC'       ! Move cursor n positions to the right
+  char(27)//'[nD'       ! Move cursor n positions to the left
+  char(27)//'[7m'       ! Invert video on
+  char(27)//'[0m'       ! Invert video off
+
+  char(92)              ! Return
+  char(27)//'[2J'       ! Clear screen
+  char(27)//'[13;12H'   ! Put cursor in line 13, column 12
+
+  char(9)               ! Horizontal tab
+#+end_src
+
+
+* Accuracy
+** Code-independent double-precision kind
+#+begin_src f90
+  integer, parameter :: double = selected_real_kind(15,307)
+  real(double) :: var
+#+end_src
+
+** Maximum accuracy compatible with ifort and gfortran
+Real:
+#+begin_src f90
+  real(kind=selected_real_kind(18,4931)) :: var
+  ifort:     kind = 16,  accuracy = 33,  range = 4931
+  gfortran:  kind = 10,  accuracy = 18,  range = 4931
+#+end_src
+See: =~/diverse/Fortran/test_fortran/005_accuracy=
+
+
+* Arrays
+** Types: ESAs and DSAs
+1. Explicit-shape arrays (ESAs):
+   - aka assumed-size arrays
+   - used in Fortran 77
+   - fixed rank, extent known at compile time
+   - starting address of the array is passed when receiving array
+
+2. Deferred-shape arrays (DSAs):
+   - aka assumed-shape arrays
+   - introduced in Fortran 90
+   - e.g. allocatable arrays, array pointers
+   - address of array descriptor (created by compiler) is passed when receiving array
+
+** Problem when passing a DSA to a ESA
+- array temporary must be created if non-allocatable array is passed
+  - gfortran-11: "Fortran runtime warning: An array temporary was created for argument 'my_arr' of procedure
+    'my_procedure'"
+- costs CPU time
+- pass allocatable array
+  - see http://www.helsinki.fi/atk/unix/dec_manuals/df90au52/dfum019.htm#outp_arg_arr_typ_tab
+  - see call to ~compute_zeta_ad()~ in =/home/sluys/diverse/software/evTools/src/plt_functions.f90=
+  - WRONG:
+    #+begin_src f90
+      call compute_zeta_ad(dat(5,1:n), dat(163,1:n))  ! Second argument is return value and not allocatable
+      end
+
+      subroutine compute_zeta_ad(Mc, zeta)
+        real(double), intent(in) :: Mc(:)
+        real(double), intent(out) :: zeta(size(Mc))
+        zeta = some_function_of(Mc)
+      end subroutine compute_zeta_ad
+    #+end_src
+  - CORRECT:
+    #+begin_src f90
+      real(double), allocatable :: zeta(:)
+
+      allocate(zeta(n))  ! Zeta must be allocatable for subroutine call
+      call compute_zeta_ad(dat(5,1:n), zeta)
+      dat(163,1:n) = zeta
+      end
+
+      subroutine compute_zeta_ad(Mc, zeta)
+        real(double), intent(in) :: Mc(:)
+        real(double), intent(out) :: zeta(:)
+        zeta = some_function_of(Mc)
+      end subroutine compute_zeta_ad
+    #+end_src
+** Efficiently accessing arrays
+- http://www.nersc.gov/vendor_docs/intel/f_ug2/prg_arrs.htm
+- Fortran uses column-major order (more efficient use of CPU memory cache):
+#+begin_src f90
+  do j=1,5                  ! J outer loop varies slowest
+    do i=1,3                ! I inner loop varies fastest
+      x(i,j) = y(i,j) + 1   ! Efficient column-major storage order (leftmost subscript varies fastest)
+    end do                   
+  end do
+#+end_src
+
+* Preprocessor
+Most compilers recognise when to use a preprocessor when the file has the extension .F90 iso .f90.
+
+* Fortran packages
+- http://packages.simplyfortran.com/package/
