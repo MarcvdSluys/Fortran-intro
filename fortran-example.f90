@@ -224,6 +224,5 @@ subroutine read_from_file()
      print*,ln,':', idat(:,ln)
   end do
   
-  
 end subroutine read_from_file
 !***************************************************************************************************

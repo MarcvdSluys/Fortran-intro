@@ -1,10 +1,105 @@
-# Created 2024-02-09 Fri 19:26
+# Created 2024-02-10 Sat 10:58
 #+title: Fortran I/O
 #+author: Marc van der Sluys
-#+export_file_name: ~/diverse/doc/MyDocumentation/fortran-intro/fortan-io
+#+export_file_name: ~/diverse/doc/MyDocumentation/fortran-intro/fortran-io
+
+* Code examples using pure Fortran
+
+** Opening and writing a file with error signaling
+#+begin_src f90
+  implicit none
+  integer :: status,op
+  character :: outFile*(99), ioMsg*(99)
+
+  write(*,'(//,A)') 'Write to file:'
+
+  ! Open output file:
+  outFile = 'file.dat'
+  op = 10  ! Need a number for the output unit (use >=10)
+  open(unit=op,form='formatted', status='replace', action='write', position='rewind', file=trim(outFile), iostat=status)
+  if(status.ne.0) then
+     write(0,'(A)') 'Error opening output file '//trim(outFile)//', aborting...'  ! 0: to stderr, trim() removes spaces
+     stop 1  ! Stop program with exit code !=0: error
+  end if
+
+  ! Write stuff:
+  write(op, '(3I3)', iostat=status, iomsg=ioMsg) 1,2,3
+  if(status.ne.0) then
+     write(0,'(A)') 'An error occurred while writing '//trim(outFile)//': '//trim(ioMsg)//', aborting...'
+     stop 1
+  end if
+
+  ! Write more stuff:
+  write(op, '(3I3)', iostat=status, iomsg=ioMsg) 8,9,10
+
+  ! Close output file:
+  close(op)
+#+end_src
+
+** Opening and reading a file with error signaling
+#+begin_src f90
+  implicit none
+  integer, parameter :: nCols=3, nLines=10  ! "Parameters" are constants, needed to define array sizes
+  integer :: status,ip,ln,ln1,  idat(nCols, nLines)
+  character :: inFile*(99), ioMsg*(99)
+
+  write(*,'(//,A)') 'Read from file:'
+  idat = 0  ! Set all array elements to 0
+
+  ! Open input file:
+  inFile = 'file.dat'
+  ip = 20  ! Need a number for the input unit
+  open(unit=ip,form='formatted', status='old', action='read', position='rewind', file=trim(inFile), iostat=status)
+  if(status.ne.0) then
+     write(0,'(A)') 'Error opening input file '//trim(inFile)//', aborting...'
+     stop 1
+  end if
+
+  ! Read file:
+  do ln=1,nLines
+     read(ip,'(3I3)',iostat=status, iomsg=ioMsg) idat(:,ln)  ! Read a single line
+     ! print*,ln,idat(:,ln)  ! In case you want to know what's going on, e.g. to debug...
+     if(status.lt.0) exit  ! Exit loop when we reach end of file
+     if(status.ne.0) then
+        write(0,'(A)') 'An error occurred while reading '//trim(inFile)//': '//trim(ioMsg)//', aborting...'
+        stop 1
+     end if
+  end do  ! ln
+  ln1 = ln - 1
+  print*,ln1,' lines read'
+  close(ip)
+
+  do ln=1,ln1
+     print*,ln,':', idat(:,ln)
+  end do
+#+end_src
 
 * Code examples using libSUFR
 /The code examples in this section use the libSUFR package (libsurf.sf.net), and are not standard Fortran./
+
+** Opening and writing a file with error signaling
+#+begin_src f90
+  use SUFR_kinds, only: double
+  use SUFR_constants, only: set_SUFR_constants
+  use SUFR_system, only: find_free_io_unit, file_open_error_quit, file_write_error_quit
+
+  call set_SUFR_constants()
+
+  ! Open output file:
+  out_file = 'comet_dynamics.csv'
+  call find_free_io_unit(op)
+  open(unit=op,form='formatted', status='replace', action='write', position='rewind', file=trim(out_file), iostat=status)
+  if(status.ne.0) call file_open_error_quit(trim(out_file), 0, 1)  ! 0: output file, 1: status: not ok
+  write(op, '(3(A9,","),3x,3(A9,","), 3x, A9,",",A9)', iostat=status, iomsg=ioMsg) 'pos_x','pos_y','pos_z', 'vel_x','vel_y','vel_z', 'rad','vel'
+
+  do iter=1,102
+     write(op, '(3(F9.5,","),3x,3(F9.4,","), 3x, F9.5,",",F9.4)', iostat=status, iomsg=ioMsg) pos_cur, vel_cur, rad,vel
+     if(status.gt.0) call file_write_error_quit(trim(out_file), iter, 0)  ! , iomsg=trim(ioMsg))
+  end do  ! iter
+
+  ! Close output file:
+  close(op)
+#+end_src
 
 ** Opening and reading a file with error signaling
 #+begin_src f90
@@ -33,30 +128,6 @@
      if(status.gt.0) call file_read_error_quit(trim(inFile), ln, 0, iomsg=trim(ioMsg))
   end do  ! ln
   close(ip)
-#+end_src
-
-** Opening and writing a file with error signaling
-#+begin_src f90
-  use SUFR_kinds, only: double
-  use SUFR_constants, only: set_SUFR_constants
-  use SUFR_system, only: find_free_io_unit, file_open_error_quit, file_write_error_quit
-
-  call set_SUFR_constants()
-
-  ! Open output file:
-  out_file = 'comet_dynamics.csv'
-  call find_free_io_unit(op)
-  open(unit=op,form='formatted', status='replace', action='write', position='rewind', file=trim(out_file), iostat=status)
-  if(status.ne.0) call file_open_error_quit(trim(out_file), 0, 1)  ! 0: output file, 1: status: not ok
-  write(op, '(3(A9,","),3x,3(A9,","), 3x, A9,",",A9)', iostat=status, iomsg=io_msg) 'pos_x','pos_y','pos_z', 'vel_x','vel_y','vel_z', 'rad','vel'
-
-  do iter=1,102
-     write(op, '(3(F9.5,","),3x,3(F9.4,","), 3x, F9.5,",",F9.4)', iostat=status, iomsg=io_msg) pos_cur, vel_cur, rad,vel
-     if(status.gt.0) call file_write_error_quit(trim(out_file), iter, 0)  ! , iomsg=trim(io_msg))
-  end do  ! iter
-
-  ! Close output file:
-  close(op)
 #+end_src
 
 * Types of access
