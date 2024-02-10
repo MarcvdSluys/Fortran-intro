@@ -1,0 +1,157 @@
+# Created 2024-02-10 Sat 11:29
+#+title: Fortran: precision, accuracy, kinds, etc.
+#+author: Marc van der Sluys
+#+export_file_name: ~/diverse/doc/MyDocumentation/fortran-intro/fortran-precision
+
+* Functions
+- ~digits(x)~      :: The number of significant digits
+- ~epsilon(x)~     :: The smallest positive number that added to 1 returns a number that is greater than 1
+- ~huge(x)~        :: The largest positive number
+- ~maxexponent(x)~ :: The largest exponent
+- ~minexponent~    :: The smallest exponent
+- ~precision(x)~   :: The decimal precision
+- ~radix(x)~       :: The base of a model number
+- ~range(x)~       :: The decimal exponent
+- ~tiny(x)~        :: The smallest positive number
+
+
+* Kinds, precisions and ranges for different compilers
+
+- Precision ~p~ means (roughly) that $1$ and $1 + 10^{-p}$ are seen as different numbers
+- Range $r$ means (roughly?) the minimum/maximum power that a number can have: $10^{-r}$ / $10^{+r}$
+
+** gfortran 4.4.3, AMD64
+
+*** Standard kinds
+| Type/kind | Kind | Precision | Range |
+|-----------+------+-----------+-------|
+|         0 |    4 |           |     9 |
+|       0.0 |    4 |         6 |    37 |
+|      0.d0 |    8 |        15 |   307 |
+
+*** Kind list
+| Type/kind | Kind | Precision | Range |
+|-----------+------+-----------+-------|
+| Int 1     |    1 |           |     2 |
+| Int 2     |    2 |           |     4 |
+| Int 4     |    4 |           |     9 |
+| Int 8     |    8 |           |    18 |
+| Int 16    |   16 |           |    38 |
+|-----------+------+-----------+-------|
+| Real 4    |    4 |         6 |    37 |
+| Real 8    |    8 |        15 |   307 |
+| Real 10   |   10 |        18 |  4931 |
+
+*** Maximum precisions
+| Type/kind | Kind | Precision | Range |
+|-----------+------+-----------+-------|
+| Integer   |   16 |           |    38 |
+| Real      |   10 |        18 |  4931 |
+
+** Intel Fortran v.11.1, AMD64
+*** Standard kinds
+| Type/kind | Kind | Precision | Range |
+|-----------+------+-----------+-------|
+|         0 |    4 |           |     9 |
+|       0.0 |    4 |         6 |    37 |
+|      0.d0 |    8 |        15 |   307 |
+
+*** Kind list
+| Type/kind | Kind | Precision | Range |
+|-----------+------+-----------+-------|
+| Int 1     |    1 |           |     2 |
+| Int 2     |    2 |           |     4 |
+| Int 4     |    4 |           |     9 |
+| Int 8     |    8 |           |    18 |
+|-----------+------+-----------+-------|
+| Real 4    |    4 |         6 |    37 |
+| Real 8    |    8 |        15 |   307 |
+| Real 16   |   16 |        33 |  4931 |
+
+*** Maximum precisions
+| Type/kind | Kind | Precision | Range |
+|-----------+------+-----------+-------|
+| Integer   |    8 |           |    18 |
+| Real      |   16 |        33 |  4931 |
+
+
+
+** NAG Fortran 5.2, AMD64
+*** Standard kinds
+| Type/kind | Kind | Precision | Range |
+|-----------+------+-----------+-------|
+|         0 |    3 |           |     9 |
+|       0.0 |    1 |         6 |    37 |
+|      0.d0 |    2 |        15 |   307 |
+
+*** Kind list
+| Type/kind | Kind | Precision | Range |
+|-----------+------+-----------+-------|
+| Int 1     |    1 |           |     2 |
+| Int 2     |    2 |           |     4 |
+| Int 3     |    3 |           |     9 |
+| Int 4     |    4 |           |    18 |
+|-----------+------+-----------+-------|
+| Real 1    |    1 |         6 |    37 |
+| Real 2    |    2 |        15 |   307 |
+| Real 3    |    3 |        31 |   291 |
+
+*** Maximum precisions
+| Type/kind | Kind | Precision | Range | Remark                                                     |
+|-----------+------+-----------+-------+------------------------------------------------------------|
+| Integer   |    4 |           |    18 |                                                            |
+| Real      |    3 |        31 |   291 |                                                            |
+| Real      |    2 |        15 |   307 | (Max range occurs for a different kind than max precision) |
+
+
+
+** Portland Group Fortran compiler v.5.1-3, x86
+*** Standard kinds
+| Type/kind | Kind | Precision | Range |
+|-----------+------+-----------+-------|
+|         0 |    4 |           |     9 |
+|       0.0 |    4 |         6 |    37 |
+|      0.d0 |    8 |        15 |   307 |
+
+*** Kind list
+| Type/kind | Kind | Precision | Range |
+|-----------+------+-----------+-------|
+| Int 1     |    1 |           |     2 |
+| Int 2     |    2 |           |     4 |
+| Int 4     |    4 |           |     9 |
+| Int 8     |    8 |           |    18 |
+|-----------+------+-----------+-------|
+| Real 4    |    4 |         6 |    37 |
+| Real 8    |    8 |        15 |   307 |
+
+*** Maximum precisions
+| Type/kind | Kind | Precision | Range |
+| Integer   |    8 |           |    18 |
+| Real      |    8 |        15 |   307 |
+
+
+
+** Pathscale Fortran compiler v.3.2, AMD64
+*** Standard kinds
+| Type/kind | Kind | Precision | Range |
+|-----------+------+-----------+-------|
+|         0 |    4 |           |     9 |
+|       0.0 |    4 |         6 |    37 |
+|      0.d0 |    8 |        15 |   307 |
+
+*** Kind list
+| Type/kind | Kind | Precision | Range |
+|-----------+------+-----------+-------|
+| Int 1     |    1 |           |     2 |
+| Int 2     |    2 |           |     4 |
+| Int 4     |    4 |           |     9 |
+| Int 8     |    8 |           |    18 |
+|-----------+------+-----------+-------|
+| Real 4    |    4 |         6 |    37 |
+| Real 8    |    8 |        15 |   307 |
+
+*** Maximum precisions
+| Type/kind | Kind | Precision | Range |
+|-----------+------+-----------+-------|
+| Integer   |    8 |           |    18 |
+| Real      |    8 |        15 |   307 |

@@ -1,0 +1,59 @@
+# Created 2024-02-10 Sat 11:13
+#+title: Fortran modules
+#+author: Marc van der Sluys
+#+export_file_name: ~/diverse/doc/MyDocumentation/fortran-intro/fortran-modules
+
+Embedding procedures (subroutines, functions) in modules makes them implicit and allows for compile-time
+checks of e.g. dummy variable type, kind, dimensions and intent.
+
+* Declare a module
+#+begin_src f90
+  module test
+    implicit none
+    save
+
+    ! <define shared data>
+
+  contains
+
+    ! <define procedures>
+
+  end module test
+#+end_src
+
+
+* Use a module
+/Once declared, the variables and functions from a module can be made available using the ~use~ statement.  The
+examples below are/ alternatives!  /Use modules before the ~implicit none~ statement./
+
+#+begin_src f90
+  use test                  ! Make ALL variables and procedures from test available - DISCOURAGED!
+  use test, only: x1, fun2  ! Make only selected variables and procedures available
+  use test, only: x2=>x1    ! Make x1 available, but call it x2 in the current procedure
+
+  implicit none
+  ! Continue with declaration of local variables, etc...
+#+end_src
+
+
+* Notes
+- use modules to share data
+  - always use the ~save~ statement to keep the values of parameters between calls
+    - (is that really necessary, or just good practice?)
+
+- use the ~use~ statement to make the data available
+  - use the ~only~ keyword to make only selected data available
+  - use ~localName=>actualName~ to rename variables in the local procedure
+
+- ~private~ variables/procedures are available to the module only, ~public~ ones are available to any procedure
+  that uses the module
+  - don't explicitly use or declare functions when they're defined in the same module
+  - don't use the ~external~ statement
+    - this works when passing the name of a subroutine and calling that subroutine from the current procedure
+    - it doesn't seem to work when passing the name of a subroutine which is passed on in another call to a
+      procedure from the current procedure - or g95 cannot do this:
+      - Error (163): Actual argument 'myfunc' at (1) does not have an INTENT
+      - This may be caused by the specification that an ~external~ subroutine must have a ~call~ statement
+        - Hence, circumvent this by adding a dummy call, e.g. ~if(.false.) call myFunc()~
+        - Or switch off Error 163 in g95?
+        - Alternatively, use a function, which can have a type and intent, rather than a subroutine?
