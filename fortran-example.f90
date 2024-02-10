@@ -10,6 +10,7 @@
 !! - The notation used in this block can be turned into documentation by the Doxygen program.
 
 
+!***************************************************************************************************
 !> \brief A main program (the name doesn't really matter - there can only be one program anyway...)
 program fortran_example
   implicit none  ! Make sure you have to define all your variables to avoid surprises.
@@ -31,12 +32,20 @@ program fortran_example
   call product_and_power(2,3, product,power)
   print*,'Product and power:', product,power
   
+  
   ! Now that we know about routines, lets use them to structure our stuff:
-  call if_statements_and_do_loops()
-
+  ! If and do loops (= "for loops"):
+  call do_loops_and_if_statements()
+  
+  ! Write to and read from file:
+  call write_to_file()
+  call read_from_file()
+  
 end program fortran_example
+!***************************************************************************************************
 
 
+!***************************************************************************************************
 !> \brief Example  printing to screen (stdout).
 subroutine print_stuff()
   implicit none
@@ -76,10 +85,12 @@ subroutine print_stuff()
   write(*,'(A,10F6.2)') 'Formatting can render readable, use multiplier 10 for this array: ', array
   write(*,'(//,A,////)') 'Add some line breaks...'
 end subroutine print_stuff
+!***************************************************************************************************
 
   
 
 
+!***************************************************************************************************
 !> \brief Example function
 function multiply(x,y)
   implicit none
@@ -87,8 +98,10 @@ function multiply(x,y)
   integer :: multiply         ! The function itself must be declared to the type it returns - here and in the caller routine!
   multiply = x*y
 end function multiply
+!***************************************************************************************************
 
 
+!***************************************************************************************************
 !> \brief Example subroutine
 subroutine product_and_power(x,y, prod,pow)
   implicit none
@@ -101,12 +114,16 @@ subroutine product_and_power(x,y, prod,pow)
   
   print*,"Don't print this, because we just returned!"
 end subroutine product_and_power
+!***************************************************************************************************
 
 
-subroutine if_statements_and_do_loops()
+!***************************************************************************************************
+subroutine do_loops_and_if_statements()
   implicit none
   integer :: iter
-
+  
+  write(*,'(//,A)') 'Do loops and if statements:'
+  
   do iter=1,10  ! Do loops are like for loops
      if(iter == 1) print*,iter, ': one!'  ! Single if - brackets required
      
@@ -133,6 +150,80 @@ subroutine if_statements_and_do_loops()
      iter = iter + 1  ! No ++ or +=... :-(
   end do
   
-end subroutine if_statements_and_do_loops
-
+end subroutine do_loops_and_if_statements
+!***************************************************************************************************
   
+!***************************************************************************************************
+subroutine write_to_file()
+  implicit none
+  integer :: status,op
+  character :: outFile*(99), ioMsg*(99)
+  
+  write(*,'(//,A)') 'Write to file:'
+  
+  ! Open output file:
+  outFile = 'file.dat'
+  op = 10  ! Need a number for the output unit (use >=10)
+  open(unit=op,form='formatted', status='replace', action='write', position='rewind', file=trim(outFile), iostat=status)
+  if(status.ne.0) then
+     write(0,'(A)') 'Error opening output file '//trim(outFile)//', aborting...'  ! 0: to stderr, trim() removes spaces
+     stop 1  ! Stop program with exit code !=0: error
+  end if
+  
+  ! Write stuff:
+  write(op, '(3I3)', iostat=status, iomsg=ioMsg) 1,2,3
+  if(status.ne.0) then
+     write(0,'(A)') 'An error occurred while writing '//trim(outFile)//': '//trim(ioMsg)//', aborting...'
+     stop 1
+  end if
+  
+  ! Write more stuff:
+  write(op, '(3I3)', iostat=status, iomsg=ioMsg) 8,9,10
+  
+  ! Close output file:
+  close(op)
+  
+end subroutine write_to_file
+!***************************************************************************************************
+
+
+!***************************************************************************************************
+subroutine read_from_file()
+  implicit none
+  integer, parameter :: nCols=3, nLines=10  ! "Parameters" are constants, needed to define array sizes
+  integer :: status,ip,ln,ln1,  idat(nCols, nLines)
+  character :: inFile*(99), ioMsg*(99)
+  
+  write(*,'(//,A)') 'Read from file:'
+  idat = 0  ! Set all array elements to 0
+  
+  ! Open input file:
+  inFile = 'file.dat'
+  ip = 20  ! Need a number for the input unit
+  open(unit=ip,form='formatted', status='old', action='read', position='rewind', file=trim(inFile), iostat=status)
+  if(status.ne.0) then
+     write(0,'(A)') 'Error opening input file '//trim(inFile)//', aborting...'
+     stop 1
+  end if
+  
+  ! Read file:
+  do ln=1,nLines
+     read(ip,'(3I3)',iostat=status, iomsg=ioMsg) idat(:,ln)  ! Read a single line
+     ! print*,ln,idat(:,ln)  ! In case you want to know what's going on, e.g. to debug...
+     if(status.lt.0) exit  ! Exit loop when we reach end of file
+     if(status.ne.0) then
+        write(0,'(A)') 'An error occurred while reading '//trim(inFile)//': '//trim(ioMsg)//', aborting...'
+        stop 1
+     end if
+  end do  ! ln
+  ln1 = ln - 1
+  print*,ln1,' lines read'
+  close(ip)
+  
+  do ln=1,ln1
+     print*,ln,':', idat(:,ln)
+  end do
+  
+  
+end subroutine read_from_file
+!***************************************************************************************************
