@@ -1,0 +1,86 @@
+# Created 2024-02-22 Thu 11:08
+#+title: PGPlot installation
+#+author: Marc van der Sluys
+#+export_file_name: ~/diverse/doc/MyDocumentation/fortran-intro/pgplot-install
+
+* Manual compilation from scratch on Gentoo and Arch
+[2015-10-11 Sun]
+
+*[2019-08-25 Sun]  NOTE: it seems the demo programs cannot be compiled - something is wrong here!*
+
+** Requirements
+- wget, tar, patch, sed, make
+- for documentation: LaTeX
+
+** Download and unpack
+(as a normal user)
+#+begin_src bash
+  wget ftp://ftp.astro.caltech.edu/pub/pgplot/pgplot522.tar.gz       # Download the latest PGPlot tarball
+  tar xfz pgplot522.tar.gz                                           # Unpack it
+  cd pgplot/
+  wget http://astrofloyd.org/downloads/pgplot_gentoo_patches.tar.gz  # Download the Gentoo patches
+  tar xfz pgplot_gentoo_patches.tar.gz                               # Unpack them
+#+end_src
+
+** Apply Gentoo patches
+#+begin_src bash
+  patch sys_linux/g77_gcc.conf   gentoo_patches/pgplot-compile-setup.patch
+  patch drivers.list             gentoo_patches/pgplot-drivers.patch
+  # patch drivers.list           gentoo_patches/pgplot-drivers-ppmonly.patch  # iso above
+  # patch sys/grtermio.c         gentoo_patches/pgplot-headers.patch  # May give errors - try/fix if you need it
+  patch drivers/pndriv.c         gentoo_patches/pgplot-libpng15.patch
+  patch makemake                 gentoo_patches/pgplot-makemake.patch
+  # patch pgdispd/proccom.c      gentoo_patches/pgplot-pgdisp.patch  # May give errors - try/fix if you need it
+  patch drivers/xtk/tkpgplot.c   gentoo_patches/pgplot-tk86.patch
+  sed -i  -e "s:/usr/local/pgplot:/usr/lib/pgplot:g"  -e "s:/usr/local/bin:/usr/bin:g"  src/grgfil.f makehtml maketex || echo "sed path failed"  # Ensure your lib and bin dir are specified
+#+end_src
+
+** Gentoo patches for 64-bit systems
+#+begin_src bash
+  sed -i -e 's/INTEGER PIXMAP/INTEGER*8 PIXMAP/g' drivers/{gi,pp,wd}driv.f || echo "sed 64bits failed"
+  cp sys_linux/g77_gcc.conf local.conf
+#+end_src
+
+** Gentoo patches for gcc/gfortran
+#+begin_src bash
+  sed -i  -e "s:FCOMPL=.*:FCOMPL=\"gfortran\":g"  -e "s:CCOMPL=.*:CCOMPL=\"gcc\":g" local.conf || echo "sed gcc compilers failed"  # Set compilers to gfortran and gcc
+#+end_src
+
+** Gentoo patches when using the Intel compilers
+#+begin_src bash
+  sed -i  -e "s:FCOMPL=.*:FCOMPL=\"ifort\":g"  -e "s:CCOMPL=.*:CCOMPL=\"icc\":g" local.conf || echo "sed Intel compilers failed"  # Set compilers to ifort and icc
+  sed -i  -e 's/-Wall//g'  -e 's/TK_LIBS="/TK_LIBS="-nofor-main /' local.conf || echo "sed Intel compiler options failed"
+#+end_src
+
+** Make
+#+begin_src bash
+  ./makemake . linux                                                               # Creates makefile using local.conf
+  make -j6 CFLAGC="${CFLAGC} -fPIC" FFLAGC="${FFLAGC} -fPIC" shared cpg-shared pgxwin_server pgdisp pgplot.doc  # Creates the shared/dynamic library - set the -j value to your number of cores
+  make clean && make -j6 all cpg                                                   # Only if you need the static libraries
+  make clean
+  strip --strip-unneeded -R .comment -R .GCC.command.line -R .note.gnu.gold-version lib*pgplot.* pgdisp pgxwin_server  # Remove unnecessary symbols
+#+end_src
+
+** Create documentation (optional)
+#+begin_src bash
+  export VARTEXFONTS="./fonts"
+  make pgplot.html pgplot-routines.tex
+  pdflatex -draftmode pgplot-routines.tex ; pdflatex pgplot-routines.tex
+#+end_src
+
+** Installation in a system directory
+as root; make sure the target directories exist!
+#+begin_src bash
+  cp grexec.f grfont.dat grpckg1.inc pgplot.inc rgb.txt /usr/lib/pgplot/
+  cp lib*pgplot.* /usr/lib/
+  cp cpgplot.h /usr/include/
+  cp aaaread.me pgplot.doc cpg/cpgplot.doc applications/curvefit/curvefit.doc pgplot.html pgplot-routines.pdf pgplot-routines.tex /usr/share/doc/pgplot/
+  cp pgdispd/aaaread.me /usr/share/doc/pgplot/pgdispd.txt
+#+end_src
+
+** Set environment variable
+You will need to set the environment variable to the proper path of grfont.dat in order to use text
+(e.g. insert in your =~/.bashrc=):
+#+begin_src bash
+  PGPLOT_FONT=/usr/lib/pgplot/grfont.dat
+#+end_src
