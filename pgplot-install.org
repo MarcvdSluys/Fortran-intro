@@ -11,6 +11,7 @@
 ** Requirements
 - wget, tar, patch, sed, make
 - for documentation: LaTeX
+- dependency packages: wget, patch, X11(-devel), png(-devel)
 
 ** Download and unpack
 (as a normal user)
@@ -53,11 +54,31 @@
 #+end_src
 
 ** Make
+*** For GNU/Linux
 #+begin_src bash
   ./makemake . linux                                                               # Creates makefile using local.conf
-  make -j6 CFLAGC="${CFLAGC} -fPIC" FFLAGC="${FFLAGC} -fPIC" shared cpg-shared pgxwin_server pgdisp pgplot.doc  # Creates the shared/dynamic library - set the -j value to your number of cores
+  make -j6 CFLAGC="${CFLAGC} -fPIC" FFLAGC="${FFLAGC} -fPIC -std=legacy" shared cpg-shared pgxwin_server pgdisp pgplot.doc  # Creates the shared/dynamic library - set the -j value to your number of cores
   make clean && make -j6 all cpg                                                   # Only if you need the static libraries
-  make clean
+  make clean                                                                       # Tidy up
+  strip --strip-unneeded -R .comment -R .GCC.command.line -R .note.gnu.gold-version lib*pgplot.* pgdisp pgxwin_server  # Remove unnecessary symbols
+#+end_src
+
+*** For Windows with Cygwin
+#+begin_src bash
+  ./makemake . linux                                                               # Creates makefile using local.conf
+
+  cp /usr/.../gcc/.../float.h /usr/local/include/values.h                          # Find some gcc float.h (forgot exact path) and copy it to values.h (or patch pgdispd/proccom.c)
+
+  make -j6 CFLAGC="${CFLAGC} -fPIC" FFLAGC="${FFLAGC} -fPIC -std=legacy" shared pgxwin_server pgdisp pgplot.doc  # Creates the shared/dynamic library - set the -j value to your number of cores
+  # OR (better?), edit makefile, add -fPIC -std=legacy  to the $FFLAG variable
+  ln -s libpgplot.so cygpgplot.dll                                                 # Shared libraries have different names under Cygwin
+  make cpg-shared
+
+  # Need to REMOVE -fPIC again from makefile?
+  make clean && make -j6 all cpg                                                   # Only if you need the static libraries
+  ln -s libpgplot.a libpgplot.dll.a                                                # Static libraries have different names under Cygwin
+
+  make clean                                                                       # Tidy up
   strip --strip-unneeded -R .comment -R .GCC.command.line -R .note.gnu.gold-version lib*pgplot.* pgdisp pgxwin_server  # Remove unnecessary symbols
 #+end_src
 
